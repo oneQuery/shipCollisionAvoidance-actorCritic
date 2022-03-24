@@ -11,6 +11,8 @@ env = gym.make('ShipEnv-v0')
 # env = gym.make('MountainCar-v0')
 env.reset()
 
+# THis is step funciton
+
 for _ in range(1000):
     env.render()
     env.step(env.action_space.sample())
