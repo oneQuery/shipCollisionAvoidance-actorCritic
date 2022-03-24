@@ -92,11 +92,11 @@ class ShipEnv(gym.Env):
         # action 및 step function에서 쓰일 각도, 속도 변환을 위한 Dynamics
         self.dt = 1
         
-        self.T_x = 100 # 자선의 추력
-        self.T_n = 50 # 자선의 추력 
+        # self.T_x = 100 # 자선의 추력
+        # self.T_n = 50 # 자선의 추력
         
         self.u = 0 # 속도
-        self.v = 1.5 
+        self.v = 0
         self.r = 0  # d_deg/dt
         
         # self.u_dot = -1.091 * self.u + 0.0028 * self.T_x
@@ -126,166 +126,35 @@ class ShipEnv(gym.Env):
         self.observation_space = spaces.Box(self.low, self.high, dtype=np.float32)
         
     def step(self, action):
-        
-        velocity = self.velocity
-        
-        '''
-        action 0 : 경로유지
-        action 1 : 좌현변침
-        action 2 : 우현변침
-        
-        VFG식 오류로 현재 action 0, 1, 2 모두 같은 행동
-        계속 angle 쌓여서 배가 반대로 움직임
-        u,v 업데이트식 수정 필요
-        action별 angle 업데이트식 수정필요
-        '''
-        
-        # action이 추력이 되야함
-        # 입력된 action이 일정 추력
-        # dr, du, dv 
-        
-        if action == 0:
-            self.action = action # action 디버깅을 위해 표시
-            
-            '''
-            1. v_dot 정의
-            2. v 정의
-            3. position 정의 
-            '''
-            
-            self.r_dot = 8.2681 * self.v - 0.9860 * self.r + 0.0307 * self.T_n
-            self.r += self.r_dot * self.dt
-            self.angle += self.r * self.dt
-            
-            # y = self.position_x - self.screen_width/2 # 수직 오차
-            # x_ran = 10 # 목표 침로각의 범위를 정하는 계수
-            # k = 1 # 침로각의 변화속도 조절 파라미터
-            
-            #  # 관성좌표계에서 정의된 직선 경로의 각도
-            # self.x_path = 0
-            # # if self.angle <= 0:
-            # #     self.x_path = -self.angle
-            # # else:
-            # #     self.x_path = -self.angle 
-                
-            # # x_d(y)
-            # self.angle = x_ran * (2/math.pi) * self.rad2deg(math.atan(k*y)) + self.x_path
-            self.angle = np.clip(self.angle, self.min_angle, self.max_angle)
-            
-            # u,v 업데이트
-            
-            self.v_dot = 0.0161 * self.v - 0.0052 * self.r + 0.0002 * self.T_n
-            self.v += self.v_dot * self.dt
-            self.position_y -= self.v * self.dt
-            
-            self.u_dot = -1.091 * self.u + 0.0028 * self.T_x
-            self.u += self.u_dot * self.dt
-            self.position_x += self.u * self.dt
-            
-            # if 0 <= self.angle <= 90:
-            #     self.u = - (self.velocity * math.cos(90 - self.angle))
-            # else:
-            #     self.u = self.velocity * math.cos(90 - self.angle)
-                
-            
-            self.position_x = np.clip(self.position_x, self.min_position_x, self.max_position_x)
-            self.position_y = np.clip(self.position_y, self.min_position_y, self.max_position_y)
-            
-            position_x = self.position_x
-            position_y = self.position_y
-            
-            done = bool(position_x == self.goal_x and position_y == self.goal_y)
-            reward = - 1.0 # mountain car에서 일단 가져옴
-            
-            # angle
-            angle = self.angle
-            
-            # velocity
-            self.velocity = math.sqrt(math.pow(self.u,2)+math.pow(self.v,2))
-            velocity = np.clip(self.velocity, self.min_speed, self.max_speed)
-            
-            self.state = (position_x, position_y, velocity, angle)
-            
-        # 좌현 변침
-        elif action == 1:
-            self.action = action
-            
-            self.r_dot = 8.2681 * self.v - 0.9860 * self.r + 0.0307 * self.T_n
-            self.r += self.r_dot * self.dt
-            self.angle += self.r * self.dt
-            self.angle = np.clip(self.angle, self.min_angle, self.max_angle)
-            
-            
-            # u,v 업데이트
-            
-            self.v_dot = 0.0161 * self.v - 0.0052 * self.r + 0.0002 * self.T_n
-            self.v += self.v_dot * self.dt
-            self.position_y -= self.v * self.dt
-            
-            self.u_dot = -1.091 * self.u + 0.0028 * self.T_x
-            self.u += self.u_dot * self.dt
-            self.position_x += self.u * self.dt
-            
-            self.position_x = np.clip(self.position_x, self.min_position_x, self.max_position_x)
-            self.position_y = np.clip(self.position_y, self.min_position_y, self.max_position_y)
-            
-            position_x = self.position_x
-            position_y = self.position_y
-            
-            self.velocity = math.sqrt(math.pow(self.u,2)+math.pow(self.v,2))
-            velocity = np.clip(self.velocity, self.min_speed, self.max_speed)
-            
-            done = bool(position_x == self.goal_x and position_y == self.goal_y)
-            reward = - 1.0 # mountain car에서 일단 가져옴
-            
-            # angle
 
-            angle = self.angle
-            
-            self.state = (position_x, position_y, velocity, angle)
-            
-        # 우현 변침
-        
-        elif action == 2:
-            self.action = action
-            
-            self.r_dot = 8.2681 * self.v - 0.9860 * self.r + 0.0307 * self.T_n
-            self.r += self.r_dot * self.dt
-            self.angle -= self.r * self.dt
-            self.angle = np.clip(self.angle, self.min_angle, self.max_angle)
-            
-            
-            # u,v 업데이트
-            
-            self.v_dot = 0.0161 * self.v - 0.0052 * self.r + 0.0002 * self.T_n
-            self.v += self.v_dot * self.dt
-            self.position_y -= self.v * self.dt
-            
-            self.u_dot = -1.091 * self.u + 0.0028 * self.T_x
-            self.u += self.u_dot * self.dt
-            self.position_x += self.u * self.dt
-            
-            self.position_x = np.clip(self.position_x, self.min_position_x, self.max_position_x)
-            self.position_y = np.clip(self.position_y, self.min_position_y, self.max_position_y)
-            
-            position_x = self.position_x
-            position_y = self.position_y
-            
-            self.velocity = math.sqrt(math.pow(self.u,2)+math.pow(self.v,2))
-            velocity = np.clip(self.velocity, self.min_speed, self.max_speed)
-            
-            done = bool(position_x == self.goal_x and position_y == self.goal_y)
-            reward = - 1.0 # mountain car에서 일단 가져옴
-            
-            # angle
+        action_Tx = 0
+        action_Tn = 50
 
-            angle = self.angle
-            
-            self.state = (position_x, position_y, velocity, angle)
-        
-        
-    
-        
+        self.r_dot = 8.2681 * self.v - 0.9860 * self.r + 0.0307 * action_Tn
+        self.v_dot = 0.0161 * self.v - 0.0052 * self.r + 0.0002 * action_Tn
+        self.u_dot = -1.091 * self.u + 0.0028 * action_Tx
+
+        self.r += self.r_dot * self.dt
+        self.v += self.v_dot * self.dt
+        self.u += self.u_dot * self.dt
+
+        # local
+        angle = self.r * self.dt
+        y = self.v * self.dt
+        x = self.u * self.dt
+
+        # global
+        self.angle += angle
+        self.position_x += x * math.cos(self.angle) - y * math.sin(self.angle)
+        self.position_y += x * math.sin(self.angle) + y * math.cos(self.angle)
+
+        self.velocity = math.sqrt(math.pow(self.u, 2) + math.pow(self.v, 2))
+
+        done = bool(self.position_x == self.goal_x and self.position_y == self.goal_y)
+        reward = - 1.0  # mountain car에서 일단 가져옴
+
+        self.state = (self.position_x, self.position_y, self.velocity, self.angle)
+
         return np. array(self.state, dtype=np.float32), reward, done, {}
      
     def reset(
@@ -328,13 +197,13 @@ class ShipEnv(gym.Env):
         pygame.draw.circle(self.surf, (255,0,0), (self.goal_x, self.goal_y), 15)
         
         # 자선 그리기
-        center = (self.state[0], self.state[1])
+        center = (self.state[1] - 120, -self.state[0] + 1200)
         scale =8
-        self.os_img: pygame.Surface = pygame.image.load("/Users/woogkingzzang/PycharmProjects/tfproject/02.Reinforcement Learning/01.Reinforcement/02.gym_environmet/images/self_ship.png")
+        self.os_img: pygame.Surface = pygame.image.load("./self_ship.png")
         self.ship_size = [i//scale for i in self.os_img.get_size()]
         self.os_img: pygame.Surface = pygame.transform.scale(self.os_img, self.ship_size)
         # rotate
-        self.os_img = pygame.transform.rotate(self.os_img, self.state[3]) 
+        self.os_img = pygame.transform.rotate(self.os_img, - self.state[3])
         # rotate된 이미지를 덮어씌우기
         self.img: pygame.Surface = pygame.transform.scale(self.os_img, self.ship_size)
         self.rect = self.img.get_rect()
@@ -346,6 +215,7 @@ class ShipEnv(gym.Env):
         self.screen.blit(self.surf,(0,0))
         self.screen.blit(self.os_img, self.rect)
 
+        print(center)
         
         if mode == "human":
             self.clock.tick(self.metadata["render_fps"])
