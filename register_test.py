@@ -14,8 +14,10 @@ env.reset()
 # THis is step funciton
 
 for _ in range(1000):
-    env.render()
+
     env.step(env.action_space.sample())
+    env.render()
+
 env.close()
 
 
