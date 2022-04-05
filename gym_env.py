@@ -68,7 +68,7 @@ class ShipEnv(gym.Env):
     차후 원하는 실험 선박에 맞춰 바꿔야함
     '''
     
-    def __init__(self, velocity = 1.5):
+    def __init__(self):
         # screen
         self.screen_width = 1300
         self.screen_height = 800
@@ -82,14 +82,14 @@ class ShipEnv(gym.Env):
         self.max_position_y = self.screen_height
         self.position_x = self.screen_width/2
         self.position_y = self.screen_height - 30
+        self.psi = math.pi/2    # rad
         
         # 자선의 속도
         self.min_speed = 0
         self.max_speed = 2
-        self.velocity = velocity
+        self.velocity = 0
         
         # 자선의 각도
-        self.angle = 0
         self.min_angle = -90
         self.max_angle = 90
         
@@ -100,15 +100,14 @@ class ShipEnv(gym.Env):
         self.beam = 2.5
         
         # 가속도와 속도 초기화
-        self.u = 1.5 # 속도
-        self.v = 0
-        self.r = 0  # d_deg/dt
-        
-        self.u_dot = 0
-        self.v_dot = 0
-        self.r_dot = 0
-        
-        
+        # Local coordinate
+        self.x, self.y, self.angle = 0, 0, 0
+        self.u, self.v, self.r = 0, 0, 0 # self.r: d_deg/dt
+        self.u_dot, self.v_dot, self.r_dot = 0, 0, 0
+
+        # Rotated coordinate
+        self.X, self.Y = 0, 0
+
         self.low = np.array([self.min_position_x, self.min_position_y, self.min_speed, self.min_angle], dtype=np.float32)
         self.high = np.array([self.max_position_x, self.max_position_y, self.max_speed, self.max_angle], dtype=np.float32)
         
@@ -124,7 +123,7 @@ class ShipEnv(gym.Env):
     
         self.action_space = spaces.Discrete(3)
         self.observation_space = spaces.Box(self.low, self.high, dtype=np.float32)
-        
+
     def step(self, action):
         
         '''
@@ -148,27 +147,27 @@ class ShipEnv(gym.Env):
         # action_Tx = 1000
         # action_Tn = 50
         
-        self.RPM_m = 1
-        self.RPM_d = 0
-        self.RPM_max = 2380
-        
-        # RPM_l = 2000
-        # RPM_r = 2000
-        # RPM_max = 2380
-        
-        RPM_l = self.RPM_max*(self.RPM_m + self.RPM_d)
-        RPM_r = self.RPM_max*(self.RPM_m - self.RPM_d)
-        
-        if RPM_l >= 0:
-            T_l = 3.54 * (10**(-5)) * (RPM_l ** 2) + 0.084 * RPM_l - 3.798
-        else:
-            T_l = -1.189 * (10**(-5)) * (RPM_l ** 2) + 0.071 * RPM_l + 4.331
-        
-        
-        if RPM_r >= 0:
-            T_r = 3.54 * (10**(-5)) * (RPM_r ** 2) + 0.084 * RPM_r - 3.798
-        else:
-            T_r = -1.189 * (10**(-5)) * (RPM_r ** 2) + 0.071 * RPM_r + 4.331
+        # self.RPM_m = 1
+        # self.RPM_d = 0
+        # self.RPM_max = 2380
+        #
+        # # RPM_l = 2000
+        # # RPM_r = 2000
+        # # RPM_max = 2380
+        #
+        # RPM_l = self.RPM_max*(self.RPM_m + self.RPM_d)
+        # RPM_r = self.RPM_max*(self.RPM_m - self.RPM_d)
+        #
+        # if RPM_l >= 0:
+        #     T_l = 3.54 * (10**(-5)) * (RPM_l ** 2) + 0.084 * RPM_l - 3.798
+        # else:
+        #     T_l = -1.189 * (10**(-5)) * (RPM_l ** 2) + 0.071 * RPM_l + 4.331
+        #
+        #
+        # if RPM_r >= 0:
+        #     T_r = 3.54 * (10**(-5)) * (RPM_r ** 2) + 0.084 * RPM_r - 3.798
+        # else:
+        #     T_r = -1.189 * (10**(-5)) * (RPM_r ** 2) + 0.071 * RPM_r + 4.331
         
         # T_l = 800
         # T_r = -320
@@ -194,29 +193,35 @@ class ShipEnv(gym.Env):
         #     self.action = action
         #     # T_l = 0
         #     # T_r = 50
-            
+
+        T_l = 10
+        T_r = 10.0001
+
         action_Tx = T_l +  T_r
         action_Tn = (T_l - T_r) * self.beam / 2
         
         self.r_dot = 8.2681 * self.v - 0.9860 * self.r + 0.0307 * action_Tn
         self.v_dot = 0.0161 * self.v - 0.0052 * self.r + 0.0002 * action_Tn
-        self.u_dot = -1.091 * self.u + 0.0028 * action_Tx
+        self.u_dot = -1.0191 * self.u + 0.0028 * action_Tx
 
-        # 지구고정좌표계
-        self.r += self.r_dot * self.dt
-        
         # 선체고정좌표계
-        self.v = self.v_dot * self.dt 
-        self.u = self.u_dot * self.dt
+        self.r += self.r_dot * self.dt
+        self.v += self.v_dot * self.dt
+        self.u += self.u_dot * self.dt
 
-        # local
-        angle = self.r * self.dt
-        self.angle += angle
+        self.angle += self.r * self.dt  # deg
+        self.y += self.v * self.dt
+        self.x += self.u * self.dt
+
+        # Rotated coordinate
+        self.psi += self.angle * 180 / math.pi # deg to rad
+        self.X = self.x * math.cos(self.psi) - self.y * math.sin(self.psi)
+        self.Y = self.x * math.sin(self.psi) + self.y * math.cos(self.psi)
         
         # y = self.v * self.dt
         # x = self.u * self.dt
-        self.V_x = self.u * math.cos(self.angle) - self.v * math.sin(self.angle)
-        self.V_y = self.u * math.sin(self.angle) + self.v * math.cos(self.angle)
+        # self.V_x = self.u * math.cos(self.angle) - self.v * math.sin(self.angle)
+        # self.V_y = self.u * math.sin(self.angle) + self.v * math.cos(self.angle)
         
         # global
         
@@ -224,15 +229,22 @@ class ShipEnv(gym.Env):
         # self.position_x += x * math.cos(self.angle) - y * math.sin(self.angle)
         # self.position_y += x * math.sin(self.angle) + y * math.cos(self.angle)
         
-        self.position_x += self.V_x * self.dt
-        self.position_y += self.V_y * self.dt
+        self.position_x += self.X
+        self.position_y += self.Y
 
-        self.velocity = math.sqrt(math.pow(self.V_x, 2) + math.pow(self.V_y, 2))
+        self.velocity = math.sqrt(math.pow(self.u, 2) + math.pow(self.v, 2))
 
         done = bool(self.position_x == self.goal_x and self.position_y == self.goal_y)
         reward = - 1.0  # mountain car에서 일단 가져옴
 
-        self.state = (self.position_x, self.position_y, self.velocity, self.angle)
+        # Temp: test for rendering
+        # self.position_x = self.screen_width / 2
+        # self.position_y = self.screen_height - 30
+        # self.psi += 1
+
+        # print("self.state: ", self.state)
+
+        self.state = (self.position_x, self.position_y, self.velocity, self.psi)
 
         return np. array(self.state, dtype=np.float32), reward, done, {}
      
@@ -278,7 +290,7 @@ class ShipEnv(gym.Env):
         
         # Goal 그리기
         pygame.draw.circle(self.surf, (255,0,0), (self.goal_y, self.goal_x), 15)
-        
+
         # 자선 그리기
         
         '''
@@ -292,35 +304,38 @@ class ShipEnv(gym.Env):
         
         center = (self.state[1] - 370 , -self.state[0]+ 1600 )
         scale = 8
-        self.os_img: pygame.Surface = pygame.image.load("./self_ship.png") 
-        
-        
+        self.os_img: pygame.Surface = pygame.image.load("./self_ship.png")
+        # self.os_img: pygame.Surface = pygame.image.load("./triangle.png")
+
+
         '''
         이미지 대신 막대기 또는 점으로 확인 => 중심점만 계속 표시하는 것으로 확정
         '''
         
         self.ship_size = [i//scale for i in self.os_img.get_size()]
         self.os_img: pygame.Surface = pygame.transform.scale(self.os_img, self.ship_size)
+        # self.os_img: pygame.Surface = pygame.transform.scale(self.os_img, [40, 40])
         
         
         # rotate
-        self.os_img = pygame.transform.rotate(self.os_img, - self.state[3])
+        self.os_img = pygame.transform.rotate(self.os_img, - self.state[3] * 180 / math.pi)
         
         # rotate된 이미지를 덮어씌우기
-        self.img: pygame.Surface = pygame.transform.scale(self.os_img, self.ship_size)
-        self.rect = self.img.get_rect()
+        # self.img: pygame.Surface = pygame.transform.scale(self.os_img, self.ship_size)
+        # self.rect = self.img.get_rect()
+        self.rect = self.os_img.get_rect()
         self.rect.center = center
         
         
         # 창 뒤집기
         # self.surf = pygame.transform.flip(self.surf, False, True) # 좌표계를 뒤집는데, 보여지는 것만 뒤집어짐 
         pygame.draw.circle(self.surf, (255, 50,50), center, 5) # 뒤집고 나서 그려야됨
-        
+
         # blit : 이미지 덮어씌우기 => 업데이트
         self.screen.blit(self.surf,(0,0))
         self.screen.blit(self.os_img, self.rect)
 
-        print(center, self.state[3])
+        print("center, self.state[3]: ", center, self.state[3])
         
         if mode == "human":
             self.clock.tick(self.metadata["render_fps"])
