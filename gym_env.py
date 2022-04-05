@@ -144,56 +144,6 @@ class ShipEnv(gym.Env):
         
         '''
         
-        # action_Tx = 1000
-        # action_Tn = 50
-        
-        # self.RPM_m = 1
-        # self.RPM_d = 0
-        # self.RPM_max = 2380
-        #
-        # # RPM_l = 2000
-        # # RPM_r = 2000
-        # # RPM_max = 2380
-        #
-        # RPM_l = self.RPM_max*(self.RPM_m + self.RPM_d)
-        # RPM_r = self.RPM_max*(self.RPM_m - self.RPM_d)
-        #
-        # if RPM_l >= 0:
-        #     T_l = 3.54 * (10**(-5)) * (RPM_l ** 2) + 0.084 * RPM_l - 3.798
-        # else:
-        #     T_l = -1.189 * (10**(-5)) * (RPM_l ** 2) + 0.071 * RPM_l + 4.331
-        #
-        #
-        # if RPM_r >= 0:
-        #     T_r = 3.54 * (10**(-5)) * (RPM_r ** 2) + 0.084 * RPM_r - 3.798
-        # else:
-        #     T_r = -1.189 * (10**(-5)) * (RPM_r ** 2) + 0.071 * RPM_r + 4.331
-        
-        # T_l = 800
-        # T_r = -320
-        # T_max= 800
-        
-        # self.sigma_m = (RPM_l + RPM_r) /(2*RPM_max)
-        # self.sigma_d = (RPM_l - RPM_r) /(2*RPM_max)
-        
-        # 추후 action에 따라 Tx, Tn 정의
-        # if action == 0:
-        #     self.action = action
-        #     # T_l = 50
-        #     # T_r = 50
-        #     action_Tx = 200
-        #     action_Tn = 50
-        
-        # elif action ==1:
-        #     self.action = action
-        #     # T_l = 50 
-        #     # T_r = 0
-        
-        # elif action ==2:
-        #     self.action = action
-        #     # T_l = 0
-        #     # T_r = 50
-
         T_l = 10
         T_r = 10.0001
 
@@ -217,18 +167,8 @@ class ShipEnv(gym.Env):
         self.psi += self.angle * 180 / math.pi # deg to rad
         self.X = self.x * math.cos(self.psi) - self.y * math.sin(self.psi)
         self.Y = self.x * math.sin(self.psi) + self.y * math.cos(self.psi)
-        
-        # y = self.v * self.dt
-        # x = self.u * self.dt
-        # self.V_x = self.u * math.cos(self.angle) - self.v * math.sin(self.angle)
-        # self.V_y = self.u * math.sin(self.angle) + self.v * math.cos(self.angle)
-        
-        # global
-        
-        # self.angle += angle
-        # self.position_x += x * math.cos(self.angle) - y * math.sin(self.angle)
-        # self.position_y += x * math.sin(self.angle) + y * math.cos(self.angle)
-        
+
+        # Global position
         self.position_x += self.X
         self.position_y += self.Y
 
@@ -236,13 +176,6 @@ class ShipEnv(gym.Env):
 
         done = bool(self.position_x == self.goal_x and self.position_y == self.goal_y)
         reward = - 1.0  # mountain car에서 일단 가져옴
-
-        # Temp: test for rendering
-        # self.position_x = self.screen_width / 2
-        # self.position_y = self.screen_height - 30
-        # self.psi += 1
-
-        # print("self.state: ", self.state)
 
         self.state = (self.position_x, self.position_y, self.velocity, self.psi)
 
@@ -305,8 +238,6 @@ class ShipEnv(gym.Env):
         center = (self.state[1] - 370 , -self.state[0]+ 1600 )
         scale = 8
         self.os_img: pygame.Surface = pygame.image.load("./self_ship.png")
-        # self.os_img: pygame.Surface = pygame.image.load("./triangle.png")
-
 
         '''
         이미지 대신 막대기 또는 점으로 확인 => 중심점만 계속 표시하는 것으로 확정
@@ -314,19 +245,14 @@ class ShipEnv(gym.Env):
         
         self.ship_size = [i//scale for i in self.os_img.get_size()]
         self.os_img: pygame.Surface = pygame.transform.scale(self.os_img, self.ship_size)
-        # self.os_img: pygame.Surface = pygame.transform.scale(self.os_img, [40, 40])
-        
-        
+
         # rotate
         self.os_img = pygame.transform.rotate(self.os_img, - self.state[3] * 180 / math.pi)
         
         # rotate된 이미지를 덮어씌우기
-        # self.img: pygame.Surface = pygame.transform.scale(self.os_img, self.ship_size)
-        # self.rect = self.img.get_rect()
         self.rect = self.os_img.get_rect()
         self.rect.center = center
-        
-        
+
         # 창 뒤집기
         # self.surf = pygame.transform.flip(self.surf, False, True) # 좌표계를 뒤집는데, 보여지는 것만 뒤집어짐 
         pygame.draw.circle(self.surf, (255, 50,50), center, 5) # 뒤집고 나서 그려야됨
